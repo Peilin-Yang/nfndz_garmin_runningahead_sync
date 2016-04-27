@@ -48,17 +48,19 @@ function get_activity_tcx(_activity_id) {
 * mode: 0 - store all activities;
 * mode: 1 - ignore the date before (for the starting month)
 * mode: 2 - ignore the date after (for the ending month)
+* mode: 3 - ignore the dates between (for the starting month and the ending month are the same)
 ******/
-function store_activities(all_activities_in_month, mode, date) {
-
+function store_activities(all_activities_in_month, mode, date1, date2) {
+  console.log(mode);
+  //console.log(date);
 }
 
-function get_all_activities_of_the_month(year, month) {
+function get_all_activities_of_the_month(year, month, mode, date1, date2) {
   var garmin_month_activities_list_url = 'https://connect.garmin.com/proxy/calendar-service/year/year_input/month/month_input';
-  $.getJSON(garmin_month_activities_list_url.replace('year_input', start_year).replace('month_input', start_month), 
+  $.getJSON(garmin_month_activities_list_url.replace('year_input', year).replace('month_input', month), 
     { _: new Date().getTime() })
     .done(function(data) {
-      get_activity_tcx('1105963703');
+      store_activities(data, mode, date1, date2);
     })
     .fail(function() {
       
@@ -83,8 +85,20 @@ function get_all_garmin_activities_id(start_date, end_date) {
   var end_month = _end.month();
 
   var tmp_start = moment(start_date);
-  var this_month = tmp_start.add(1, 'months');
-  
+  if (tmp_start.isSame(_end, 'month')) {
+    get_all_activities_of_the_month(tmp_start.year(), tmp_start.month(), 3, _start_, _end);
+  } else {
+    get_all_activities_of_the_month(tmp_start.year(), tmp_start.month(), 1, _start);
+    while (1) {
+      tmp_start.add(1, 'months');
+      if (tmp_start.isSame(_end, 'month')) {
+        get_all_activities_of_the_month(tmp_start.year(), tmp_start.month(), 2, _end);
+        break;
+      } else {
+        get_all_activities_of_the_month(tmp_start.year(), tmp_start.month(), 0);
+      }
+    }
+  }
 }
 
 function register_action_btn() {
