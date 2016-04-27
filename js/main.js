@@ -86,7 +86,7 @@ function get_all_garmin_activities_id(start_date, end_date) {
 
   var tmp_start = moment(start_date);
   if (tmp_start.isSame(_end, 'month')) {
-    get_all_activities_of_the_month(tmp_start.year(), tmp_start.month(), 3, _start_, _end);
+    get_all_activities_of_the_month(tmp_start.year(), tmp_start.month(), 3, _start, _end);
   } else {
     get_all_activities_of_the_month(tmp_start.year(), tmp_start.month(), 1, _start);
     while (1) {
