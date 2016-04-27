@@ -1,39 +1,79 @@
 var g_start_date;
 var g_end_date;
 var g_all_activity_ids = [];
+var g_all_activity_dict = {};
 var g_cur_downloading_activity_id = 0;
 var g_cur_date;
 
-function _reset() {
-  g_all_activity_ids = [];
-  g_cur_downloading_activity_id = 0;
-  enable_sync_btn();
-  $("#pbar0").hide();
+// the date of the currently downloading activities
+var g_downloading_cur_date;
+// the index of the currently downloading activities
+// in current date. There might be several activites 
+// within one day.
+var g_downloading_cur_idx = 0;
+
+function update_indicating_text(_text) {
+  $("#pbar0 > p").text(_text);
 }
 
-function get_activity_tcx(_activity_id) {
+function update_milestone_text(_html, success) {
+  if (success) {
+    $('#total_activities_show').addClass('alert-success').removeClass('alert-danger');
+  } else {
+    $('#total_activities_show').addClass('alert-danger').removeClass('alert-success');
+  }
+  $('#total_activities_show').html(_html).show();
+}
+
+function _reset() {
+  g_start_date = 0;
+  g_end_date = 0;
+  g_all_activity_ids = [];
+  g_all_activity_dict = {};
+  g_cur_downloading_activity_id = 0;
+  enable_form();
+  $("#pbar0").hide();
+  g_downloading_cur_date = 0;
+  g_downloading_cur_idx = 0;
+}
+
+function register_chrome_download_oncreated_cb() {
+  chrome.downloads.onCreated.addListener(function(downloadItem) {
+    g_cur_downloading_activity_id++;
+    download_activities();
+  });
+}
+
+function get_activity_tcx(_activity_id, date) {
   var garmin_activity_tcx_url = 'https://connect.garmin.com/modern/proxy/activity-service-1.1/tcx/activity/activity_id?full=true';
+  var output_fn = 'activity_'+_activity_id+'.tcx';
+  console.log($('input[type=radio][name=logsfileopt]:checked').val());
+  if ($('input[type=radio][name=logsfileopt]:checked').val() == 'option1') {
+    if (moment(date).isSame(g_downloading_cur_date)) {
+      g_downloading_cur_idx++;
+    } else {
+      g_downloading_cur_date = date;
+      g_downloading_cur_idx = 0;
+    }
+    output_fn = date+'_'+g_downloading_cur_idx+'.tcx';
+  }
   chrome.downloads.download({
     url: garmin_activity_tcx_url.replace('activity_id', _activity_id),
-    filename: 'nfndz_garmin_logs/'+_activity_id+'.tcx',
+    //filename: 'nfndz_garmin_logs/'+output_fn+'.tcx',
+    filename: 'nfndz_garmin_logs/'+output_fn,
     conflictAction: 'overwrite'
   });
-  // $.get(garmin_activity_tcx_url.replace('activity_id', _activity_id), 
-  //   { full: true })
-  //   .done(function(data) {
-
-  //   })
-  //   .fail(function() {
-      
-  //   })
-  //   .always(function() {
-      
-  // });
 }
 
 function download_activities() {
   if (g_cur_downloading_activity_id < g_all_activity_ids.length) {
-    get_activity_tcx(g_all_activity_ids[g_cur_downloading_activity_id]);
+    update_indicating_text('Downloading and Synchronizing the Activities...('
+        +(g_cur_downloading_activity_id+1)+'/'+g_all_activity_ids.length+')');
+    var cur_id = g_all_activity_ids[g_cur_downloading_activity_id];
+    get_activity_tcx(cur_id, g_all_activity_dict[cur_id]);
+  } else {
+    update_milestone_text('<strong>ALL Works DONE!</strong>', 1);
+    _reset();
   }
 }
 
@@ -69,6 +109,7 @@ function store_activity_ids(all_activities_in_month, mode, date1, date2) {
       }  
       if (append) {
         g_all_activity_ids.push(obj.id);
+        g_all_activity_dict[obj.id] = obj.date;
       }
     }
   });
@@ -83,7 +124,7 @@ function get_all_activities_of_the_month(year, month, mode, date1, date2) {
     { _: new Date().getTime() })
     .done(function(data) {
       //toastr.success('success!');
-      $("#pbar0 > p").text('Getting Activities of '+year+'/'+(month+1));
+      update_indicating_text('Getting Activities of '+year+'/'+(month+1));
       store_activity_ids(data, mode, date1, date2);
       g_cur_date.add(1, 'months');
       if (g_cur_date.isSame(g_end_date, 'month')) {
@@ -92,15 +133,14 @@ function get_all_activities_of_the_month(year, month, mode, date1, date2) {
         get_all_activities_of_the_month(g_cur_date.year(), g_cur_date.month(), 0, g_cur_date);
       } else {
         // We are done!
-        $('#total_activities_show')
-          .html('<strong>'+g_all_activity_ids.length+'</strong> activities were found.')
-          .show();
-        $("#pbar0 > p").text('Downloading and Synchronizing the Activities...');
-        //download_activities();
+        update_milestone_text('<strong>'+g_all_activity_ids.length+'</strong> activities were found.', 1);
+        update_indicating_text('Downloading and Synchronizing the Activities...');
+        download_activities();
       }
     })
     .fail(function() {
       toastr.error('Cannot get activities from Garmin. Please log in to Garmin Connect first.');
+      update_milestone_text('Cannot get activities from Garmin. Please log in to Garmin Connect first.', 0);
       _reset();
     })
     .always(function() {
@@ -134,33 +174,30 @@ function get_all_garmin_activities_id(start_date, end_date) {
 function register_action_btn() {
   $('#sync_btn').on('click', function (e) {
     e.preventDefault();
-    $(this).prepend('<i class="fa fa-circle-o-notch fa-spin fa-fw"></i>');
-    $(this).prop("disabled", true);
-
     var start_date = $("#start_date").val();
     var end_date = $("#end_date").val();
-    
+    disable_form();
     $("#pbar0").show();
+    $('#total_activities_show').hide();
     get_all_garmin_activities_id(start_date, end_date);
   });
 }
 
-function enable_sync_btn() {
+function enable_form() {
   $('#sync_btn').find("i").remove();
-  $('#sync_btn').prop("disabled", false);  
+  $('#sync_btn').prop("disabled", false); 
+  $("input[name=logsfileopt]").prop('disabled', false);
+  $("input[name=synccheck]").prop('disabled', false);
+  $("input[name=runningaheadid]").prop('disabled', false); 
 }
 
-function register_test_btn() {
-  $('#test_btn').on('click', function (e) {
-    e.preventDefault();
-    var data = new FormData();
-    jQuery.each(jQuery('#fn')[0].files, function(i, file) {
-        data.append('file-'+i, file);
-    });
-    console.log(data);
-  });
+function disable_form() {
+  $('#sync_btn').prepend('<i class="fa fa-circle-o-notch fa-spin fa-fw"></i>');
+  $('#sync_btn').prop("disabled", true);
+  $("input[name=logsfileopt]").prop('disabled', true);
+  $("input[name=synccheck]").prop('disabled', true);
+  $("input[name=runningaheadid]").prop('disabled', true); 
 }
-
 
 function register_form_validator() {
   $('#main-form')
@@ -233,6 +270,10 @@ function register_datepicker_events() {
   });
 }
 
+function register_runningahead_checkbox() {
+  
+}
+
 $( document ).ready(function() {
   toastr.options = {
     "closeButton": true,
@@ -253,7 +294,8 @@ $( document ).ready(function() {
   $('#pbar').hide();
 
   register_action_btn();
-  //register_test_btn();
+  register_runningahead_checkbox();
   register_datepicker_events();
   register_form_validator();
+  register_chrome_download_oncreated_cb();
 });
