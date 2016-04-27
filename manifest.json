@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2,
+
+  "name": "[NFNDZ]Garmin Runningahead Sync",
+  "description": "This extension synchronizes the activities from Garmin to Runningahead",
+  "version": "1.0",
+
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_title": "[NFNDZ]Garmin Runningahead Sync"
+  },
+   "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "webRequest",
+    "cookies", 
+    "downloads", 
+    "tabs", 
+    "<all_urls>"
+  ]
+}

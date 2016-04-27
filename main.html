@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>[NFNDZ]Garmin Runningahead Sync</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/bootstrap-datepicker3.min.css">
+    <link rel="stylesheet" href="css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/main.css">
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>[NFNDZ]Garmin Runningahead Sync</h2>
+      <div class="row">
+        <div class="text-danger"><h3><strong>Please Read Carefully Before Use This Toolkit!!!</strong></h3></div>
+        <ul>
+          <li>Use this toolkit at your own risk. The author takes no responsibility of the possible problems it brings.</li>
+          <li>Please upgrade Chrome to the latest version.</li>
+          <li>Please make sure that your Garmin connect and Runningahead are logged in within the same web browser windows.</li>
+          <li>The toolkit will download all the activities logs to your local disk. The target directory will be <code>nfndz_garmin_logs</code> in your "Downloads" directory. Please make sure there are enough space.</li>
+          <li>You can opt to sync the logs to Runningahead. Also, you can choose to remove the log files from your local disk once there are successfully synced.</li>
+        </ul>
+      </div>
+      <div class="row">
+        <div class="col-sm-6 col-md-6 col-lg-6 col-md-6 col-sm-offset-3 col-md-offset-3 col-lg-offset-3">
+          <form>
+            <div class="form-group input-daterange">
+              <label for="date-range" class="col-sm-12 col-md-12 col-lg-12 control-label">Select the sync date range</label>
+              <input type="text" class="form-control" value="" id="start_date" placeholder="Start Date">
+              <span class="input-group-addon">to</span>
+              <input type="text" class="form-control" value="" id="end_date" placeholder="End Date">
+            </div>
+
+            <div class="radio">
+              <label>
+                <input type="radio" name="logsfileopt" id="logsfileopt1" value="option1" checked>
+                Use date as log file name (e.g. 2016-03-10.tcx)
+              </label>
+            </div>
+            <div class="radio">
+              <label>
+                <input type="radio" name="logsfileopt" id="logsfileopt2" value="option2">
+                Use original log file name (e.g. activity_1234567890.tcx)
+              </label>
+            </div>
+
+            <div class="form-group">
+              <div class="col-sm-10">
+                <div class="checkbox">
+                  <label>
+                    <input type="checkbox"> Sync to Runningahead
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <input class="form-control" type="text" placeholder="Runningahead ID" disabled>
+            </div>
+            <div class="form-group">
+              <button type="submit" id="sync_btn" class="btn btn-default">Start Synchronization</button>
+            </div>
+          </form>
+
+          <div class="progress" id="pbar">
+            <div class="progress-bar" role="progressbar" aria-valuenow="2" aria-valuemin="0" aria-valuemax="100" style="min-width: 2em;">
+            </div>
+          </div>
+
+          <form enctype="multipart/form-data" action="http://www.runningahead.com/logs/rh_id/tools/import" method="post" style="display:none;">
+            <input name="__VIEWSTATE" />
+            <input name="__RAVIEWSTATE" value="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"/>
+            <input name="ctl00$ctl00$ctl00$SiteContent$PageContent$TrainingLogContent$m_file2" type="file" />
+            <input name="ctl00$ctl00$ctl00$SiteContent$PageContent$TrainingLogContent$m_import_s" value="Upload" />
+            <input name="ctl00$ctl00$ctl00$SiteContent$PageContent$TrainingLogContent$m_type" value="9" />
+            <textarea name="ctl00$ctl00$ctl00$SiteContent$PageContent$TrainingLogContent$m_file" id="fn" ></textarea> 
+          </form>
+        </div>
+      </div>
+
+      
+      </br>
+
+      <div>
+      <table id="queries" class="table table-bordered table-hover table-condensed">
+      </table>
+      </div>
+      
+    </div>
+  </body>
+
+  <script src="js/jquery.min.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+  <script src="js/bootstrap-datepicker.min.js"></script>
+  <script src="js/moment.min.js"></script>
+  <script src="js/jquery.countdown.min.js"></script>
+  <script src="js/main.js"></script>
+
+</html>
