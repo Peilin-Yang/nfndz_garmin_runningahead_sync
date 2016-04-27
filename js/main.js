@@ -11,6 +11,7 @@ var g_downloading_cur_date;
 // in current date. There might be several activites 
 // within one day.
 var g_downloading_cur_idx = 0;
+var g_cur_downloading_activity_fn = '';
 
 function update_indicating_text(_text) {
   $("#pbar0 > p").text(_text);
@@ -25,6 +26,13 @@ function update_milestone_text(_html, success) {
   $('#total_activities_show').html(_html).show();
 }
 
+function update_download_bar(percentage, _text) {
+  $('#download_activity > p').text(_text);
+  $('div#download_bar').width(percentage+'%');
+  $('div#download_bar').text(percentage+'%');
+  $('#download_activity').show();
+}
+
 function _reset() {
   g_start_date = 0;
   g_end_date = 0;
@@ -33,8 +41,11 @@ function _reset() {
   g_cur_downloading_activity_id = 0;
   enable_form();
   $("#pbar0").hide();
+  $('#download_activity').hide();
+  $('#sync_bar').hide();
   g_downloading_cur_date = 0;
   g_downloading_cur_idx = 0;
+  g_cur_downloading_activity_fn = '';
 }
 
 function register_chrome_download_oncreated_cb() {
@@ -46,8 +57,7 @@ function register_chrome_download_oncreated_cb() {
 
 function get_activity_tcx(_activity_id, date) {
   var garmin_activity_tcx_url = 'https://connect.garmin.com/modern/proxy/activity-service-1.1/tcx/activity/activity_id?full=true';
-  var output_fn = 'activity_'+_activity_id+'.tcx';
-  console.log($('input[type=radio][name=logsfileopt]:checked').val());
+  g_cur_downloading_activity_fn = 'activity_'+_activity_id+'.tcx';
   if ($('input[type=radio][name=logsfileopt]:checked').val() == 'option1') {
     if (moment(date).isSame(g_downloading_cur_date)) {
       g_downloading_cur_idx++;
@@ -55,20 +65,25 @@ function get_activity_tcx(_activity_id, date) {
       g_downloading_cur_date = date;
       g_downloading_cur_idx = 0;
     }
-    output_fn = date+'_'+g_downloading_cur_idx+'.tcx';
+    g_cur_downloading_activity_fn = date+'_'+g_downloading_cur_idx+'.tcx';
   }
   chrome.downloads.download({
     url: garmin_activity_tcx_url.replace('activity_id', _activity_id),
     //filename: 'nfndz_garmin_logs/'+output_fn+'.tcx',
-    filename: 'nfndz_garmin_logs/'+output_fn,
+    filename: 'nfndz_garmin_logs/'+g_cur_downloading_activity_fn,
     conflictAction: 'overwrite'
   });
 }
 
 function download_activities() {
   if (g_cur_downloading_activity_id < g_all_activity_ids.length) {
-    update_indicating_text('Downloading and Synchronizing the Activities...('
-        +(g_cur_downloading_activity_id+1)+'/'+g_all_activity_ids.length+')');
+    update_indicating_text(
+      'Downloading Activity '
+      +g_cur_downloading_activity_fn
+      +' ('+(g_cur_downloading_activity_id+1)+'/'+g_all_activity_ids.length+')');
+    update_download_bar( 
+      ((g_cur_downloading_activity_id+1)*100.0/g_all_activity_ids.length).toFixed(0)
+    );
     var cur_id = g_all_activity_ids[g_cur_downloading_activity_id];
     get_activity_tcx(cur_id, g_all_activity_dict[cur_id]);
   } else {
@@ -86,7 +101,10 @@ function download_activities() {
 ******/
 function store_activity_ids(all_activities_in_month, mode, date1, date2) {
   $.each(all_activities_in_month['calendarItems'], function(i, obj) {
-    if (g_all_activity_ids.indexOf(obj.id) == -1) {
+    if (g_all_activity_ids.indexOf(obj.id) == -1 
+      && moment(obj.date).isSameOrAfter(g_start_date) 
+      && moment(obj.date).isSameOrBefore(g_end_date) 
+    ) {
       var append = false;
       if (mode == 0) {
         // this is the intermediate month
@@ -186,6 +204,8 @@ function register_action_btn() {
 function enable_form() {
   $('#sync_btn').find("i").remove();
   $('#sync_btn').prop("disabled", false); 
+  $("input[name=start_date]").prop('disabled', false);
+  $("input[name=end_date]").prop('disabled', false);
   $("input[name=logsfileopt]").prop('disabled', false);
   $("input[name=synccheck]").prop('disabled', false);
   $("input[name=runningaheadid]").prop('disabled', false); 
@@ -194,6 +214,8 @@ function enable_form() {
 function disable_form() {
   $('#sync_btn').prepend('<i class="fa fa-circle-o-notch fa-spin fa-fw"></i>');
   $('#sync_btn').prop("disabled", true);
+  $("input[name=start_date]").prop('disabled', true);
+  $("input[name=end_date]").prop('disabled', true);
   $("input[name=logsfileopt]").prop('disabled', true);
   $("input[name=synccheck]").prop('disabled', true);
   $("input[name=runningaheadid]").prop('disabled', true); 
@@ -271,7 +293,13 @@ function register_datepicker_events() {
 }
 
 function register_runningahead_checkbox() {
-  
+  $('input[name=synccheck]').change(function() {
+    if($(this).is(":checked")) {
+      $("input[name=runningaheadid]").prop('disabled', false);
+    } else {
+      $("input[name=runningaheadid]").prop('disabled', true);
+    }
+  });  
 }
 
 $( document ).ready(function() {
@@ -290,9 +318,6 @@ $( document ).ready(function() {
     "showMethod": "fadeIn",
     "hideMethod": "fadeOut"
   };
-
-  $('#pbar').hide();
-
   register_action_btn();
   register_runningahead_checkbox();
   register_datepicker_events();
