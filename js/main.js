@@ -1,3 +1,4 @@
+var g_download_dir = 'nfndz_garmin_logs';
 var g_start_date;
 var g_end_date;
 var g_all_activity_ids = [];
@@ -55,6 +56,20 @@ function register_chrome_download_oncreated_cb() {
   });
 }
 
+function register_chrome_download_onchanged_cb() {
+  chrome.downloads.onChanged.addListener(function(downloadDelta) {
+    if ('state' in downloadDelta && downloadDelta['state']['current'] == 'complete') {
+      console.log(downloadDelta);
+    }
+    if ('filename' in downloadDelta && downloadDelta['filename']['current'].indexOf(g_download_dir) > -1) {
+      // indicating the start of the downloading...
+      // we probably can start the next downloading...
+      g_cur_downloading_activity_id++;
+      download_activities();
+    }
+  });
+}
+
 function get_activity_tcx(_activity_id, date) {
   var garmin_activity_tcx_url = 'https://connect.garmin.com/modern/proxy/activity-service-1.1/tcx/activity/activity_id?full=true';
   g_cur_downloading_activity_fn = 'activity_'+_activity_id+'.tcx';
@@ -70,7 +85,7 @@ function get_activity_tcx(_activity_id, date) {
   chrome.downloads.download({
     url: garmin_activity_tcx_url.replace('activity_id', _activity_id),
     //filename: 'nfndz_garmin_logs/'+output_fn+'.tcx',
-    filename: 'nfndz_garmin_logs/'+g_cur_downloading_activity_fn,
+    filename: g_download_dir+'/'+g_cur_downloading_activity_fn,
     conflictAction: 'overwrite'
   });
 }
@@ -322,5 +337,6 @@ $( document ).ready(function() {
   register_runningahead_checkbox();
   register_datepicker_events();
   register_form_validator();
-  register_chrome_download_oncreated_cb();
+  //register_chrome_download_oncreated_cb();
+  register_chrome_download_onchanged_cb();
 });
