@@ -13,6 +13,7 @@ var g_downloading_cur_date;
 // within one day.
 var g_downloading_cur_idx = 0;
 var g_cur_downloading_activity_fn = '';
+var g_cur_downloading_activity_fullpath = '';
 
 function update_indicating_text(_text) {
   $("#pbar0 > p").text(_text);
@@ -47,6 +48,7 @@ function _reset() {
   g_downloading_cur_date = 0;
   g_downloading_cur_idx = 0;
   g_cur_downloading_activity_fn = '';
+  g_cur_downloading_activity_fullpath = '';
 }
 
 function register_chrome_download_oncreated_cb() {
@@ -58,14 +60,20 @@ function register_chrome_download_oncreated_cb() {
 
 function register_chrome_download_onchanged_cb() {
   chrome.downloads.onChanged.addListener(function(downloadDelta) {
+    console.log(downloadDelta);
     if ('state' in downloadDelta && downloadDelta['state']['current'] == 'complete') {
-      console.log(downloadDelta);
-    }
-    if ('filename' in downloadDelta && downloadDelta['filename']['current'].indexOf(g_download_dir) > -1) {
-      // indicating the start of the downloading...
-      // we probably can start the next downloading...
+      // first see whether we should sync to Runningahead
+      
+      // then download a new activity
       g_cur_downloading_activity_id++;
       download_activities();
+    }
+    if ('filename' in downloadDelta && downloadDelta['filename']['current'].indexOf(g_download_dir) > -1) {
+      g_cur_downloading_activity_fullpath = downloadDelta['filename']['current'];
+      // indicating the start of the downloading...
+      // we probably can start the next downloading...
+      // g_cur_downloading_activity_id++;
+      // download_activities();
     }
   });
 }
@@ -222,8 +230,6 @@ function enable_form() {
   $("input[name=start_date]").prop('disabled', false);
   $("input[name=end_date]").prop('disabled', false);
   $("input[name=logsfileopt]").prop('disabled', false);
-  $("input[name=synccheck]").prop('disabled', false);
-  $("input[name=runningaheadid]").prop('disabled', false); 
 }
 
 function disable_form() {
@@ -232,8 +238,6 @@ function disable_form() {
   $("input[name=start_date]").prop('disabled', true);
   $("input[name=end_date]").prop('disabled', true);
   $("input[name=logsfileopt]").prop('disabled', true);
-  $("input[name=synccheck]").prop('disabled', true);
-  $("input[name=runningaheadid]").prop('disabled', true); 
 }
 
 function register_form_validator() {
@@ -307,16 +311,6 @@ function register_datepicker_events() {
   });
 }
 
-function register_runningahead_checkbox() {
-  $('input[name=synccheck]').change(function() {
-    if($(this).is(":checked")) {
-      $("input[name=runningaheadid]").prop('disabled', false);
-    } else {
-      $("input[name=runningaheadid]").prop('disabled', true);
-    }
-  });  
-}
-
 $( document ).ready(function() {
   toastr.options = {
     "closeButton": true,
@@ -334,7 +328,6 @@ $( document ).ready(function() {
     "hideMethod": "fadeOut"
   };
   register_action_btn();
-  register_runningahead_checkbox();
   register_datepicker_events();
   register_form_validator();
   //register_chrome_download_oncreated_cb();

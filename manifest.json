@@ -1,13 +1,13 @@
 {
   "manifest_version": 2,
 
-  "name": "[NFNDZ]Garmin Runningahead Sync",
-  "description": "This extension synchronizes the activities from Garmin to Runningahead",
+  "name": "[NFNDZ]Garmin Activities Batch Downloader",
+  "description": "This extension can download multiple activities from Garmin Connect",
   "version": "1.0",
 
   "browser_action": {
     "default_icon": "icon.png",
-    "default_title": "[NFNDZ]Garmin Runningahead Sync"
+    "default_title": "[NFNDZ]Garmin Activities Batch Downloader"
   },
    "background": {
     "scripts": ["background.js"]
