@@ -44,24 +44,17 @@ function get_activity_tcx(_activity_id) {
 }
 
 /*****
-* We first need to get all activities id from Garmin.
-* Please note that for Garmin, the activities are grouped by month not by day or activity.
-* So we first get all activities in the month and read through them and get the activites 
-* in the right range.
+* The CALLBACK function after getting all the activities of the month.
+* mode: 0 - store all activities;
+* mode: 1 - ignore the date before (for the starting month)
+* mode: 2 - ignore the date after (for the ending month)
 ******/
-function get_all_garmin_activities_id(start_date, end_date) {
-  var garmin_month_activities_list_url = 'https://connect.garmin.com/proxy/calendar-service/year/year_input/month/month_input';
-  var _start = moment(start_date);
-  var _end = moment(end_date);
-  var start_year = _start.year();
-  var start_month = _start.month();
-  var end_year = _end.year();
-  var end_month = _end.month();
+function store_activities(all_activities_in_month, mode, date) {
 
-  var month_idx = 0;
-  while (1) {
-    var this_month = _start.add(month_idx, 1);
-  }
+}
+
+function get_all_activities_of_the_month(year, month) {
+  var garmin_month_activities_list_url = 'https://connect.garmin.com/proxy/calendar-service/year/year_input/month/month_input';
   $.getJSON(garmin_month_activities_list_url.replace('year_input', start_year).replace('month_input', start_month), 
     { _: new Date().getTime() })
     .done(function(data) {
@@ -72,7 +65,26 @@ function get_all_garmin_activities_id(start_date, end_date) {
     })
     .always(function() {
       
-  });
+  });  
+}
+
+/*****
+* We first need to get all activities id from Garmin.
+* Please note that for Garmin, the activities are grouped by month not by day or activity.
+* So we first get all activities in the month and read through them and get the activites 
+* in the right range.
+******/
+function get_all_garmin_activities_id(start_date, end_date) {
+  var _start = moment(start_date);
+  var _end = moment(end_date);
+  var start_year = _start.year();
+  var start_month = _start.month();
+  var end_year = _end.year();
+  var end_month = _end.month();
+
+  var tmp_start = moment(start_date);
+  var this_month = tmp_start.add(1, 'months');
+  
 }
 
 function register_action_btn() {
