@@ -14,6 +14,7 @@ var g_downloading_cur_date;
 var g_downloading_cur_idx = 0;
 var g_cur_downloading_activity_fn = '';
 var g_cur_downloading_activity_fullpath = '';
+var g_last_downloaded_id = -1;
 
 function update_indicating_text(_text) {
   $("#pbar0 > p").text(_text);
@@ -49,6 +50,7 @@ function _reset() {
   g_downloading_cur_idx = 0;
   g_cur_downloading_activity_fn = '';
   g_cur_downloading_activity_fullpath = '';
+  //g_last_downloaded_id = -1;
 }
 
 function register_chrome_download_oncreated_cb() {
@@ -66,6 +68,7 @@ function register_chrome_download_onchanged_cb() {
       
       // then download a new activity
       g_cur_downloading_activity_id++;
+      g_last_downloaded_id = downloadDelta['id'];
       download_activities();
     }
     if ('filename' in downloadDelta && downloadDelta['filename']['current'].indexOf(g_download_dir) > -1) {
@@ -111,6 +114,7 @@ function download_activities() {
     get_activity_tcx(cur_id, g_all_activity_dict[cur_id]);
   } else {
     update_milestone_text('<strong>ALL Works DONE!</strong>', 1);
+    $('#show_downloaded_files_btn').show();
     _reset();
   }
 }
@@ -311,6 +315,12 @@ function register_datepicker_events() {
   });
 }
 
+function register_show_download_folder_btn() {
+  $('#show_downloaded_files_btn').on('click', function() {
+    chrome.downloads.show(g_last_downloaded_id);
+  });
+}
+
 $( document ).ready(function() {
   toastr.options = {
     "closeButton": true,
@@ -332,4 +342,5 @@ $( document ).ready(function() {
   register_form_validator();
   //register_chrome_download_oncreated_cb();
   register_chrome_download_onchanged_cb();
+  register_show_download_folder_btn();
 });
