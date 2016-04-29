@@ -27,7 +27,7 @@
         </ul>
       </div>
       <div class="row">
-        <div class="col-sm-6 col-md-6 col-lg-6 col-md-6 col-sm-offset-3 col-md-offset-3 col-lg-offset-3">
+        <div class="col-sm-6 col-md-6 col-lg-6 col-sm-offset-3 col-md-offset-3 col-lg-offset-3">
           <form id="main-form">
             <div class="form-group input-daterange">
               <label for="date-range" class="col-sm-12 col-md-12 col-lg-12 control-label">Select the sync date range</label>
@@ -68,7 +68,33 @@
           </div>
 
           <div id="total_activities_show" style="display:none;" class="alert alert-success" role="alert"></div>
+          <div id="final_msg" class="row" style="display:none;">
+            <div id="final_msg_success" class="col-sm-6 col-md-6 col-lg-6 alert alert-success" role="alert"></div>
+            <div id="final_msg_fail" class="col-sm-6 col-md-6 col-lg-6 alert alert-danger" role="alert"></div>
+          </div>
           <button id="show_downloaded_files_btn" style="display:none;" type="button" class="btn btn-success">Show Download Folder</button>
+
+          <table id="error-table" style="display:none;" class="table table-hover">
+          <caption>Failed Activities</caption>
+          <thead>
+            <tr>  
+              <th>
+                <i class="fa fa-tag fa-fw"></i>Activity ID
+              </th> 
+              <th>
+                <i class="fa fa-clock-o fa-fw"></i>Date
+              </th>
+              <th>
+                <i class="fa fa-file-text-o fa-fw"></i>Message
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+          </tbody>
+        </table>
+
         </div>
       </div>
     </div>

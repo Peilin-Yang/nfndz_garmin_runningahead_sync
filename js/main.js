@@ -14,7 +14,10 @@ var g_downloading_cur_date;
 var g_downloading_cur_idx = 0;
 var g_cur_downloading_activity_fn = '';
 var g_cur_downloading_activity_fullpath = '';
-var g_last_downloaded_id = -1;
+var g_cur_downloading_chrome_id = -1;
+var g_last_downloaded_chrome_id = -1;
+var g_download_errors = [];
+var g_chrome_download_timeout = null;
 
 function update_indicating_text(_text) {
   $("#pbar0 > p").text(_text);
@@ -22,11 +25,17 @@ function update_indicating_text(_text) {
 
 function update_milestone_text(_html, success) {
   if (success) {
-    $('#total_activities_show').addClass('alert-success').removeClass('alert-danger');
+    $('#total_activities_show').addClass('alert-info').removeClass('alert-danger');
   } else {
-    $('#total_activities_show').addClass('alert-danger').removeClass('alert-success');
+    $('#total_activities_show').addClass('alert-danger').removeClass('alert-info');
   }
   $('#total_activities_show').html(_html).show();
+}
+
+function update_final_msg_text(success_html, fail_html) {
+  $('#final_msg_success').html(success_html);
+  $('#final_msg_fail').html(fail_html);
+  $('#final_msg').show();
 }
 
 function update_download_bar(percentage, _text) {
@@ -34,6 +43,17 @@ function update_download_bar(percentage, _text) {
   $('div#download_bar').width(percentage+'%');
   $('div#download_bar').text(percentage+'%');
   $('#download_activity').show();
+}
+
+function _reset_chrom_download_status() {
+  g_downloading_cur_idx = 0;
+  g_cur_downloading_activity_fn = '';
+  g_cur_downloading_activity_fullpath = '';
+  g_cur_downloading_chrome_id = -1;
+  g_last_downloaded_chrome_id = -1;
+  g_download_errors = [];
+  clearTimeout(g_chrome_download_timeout);
+  g_chrome_download_timeout = null;
 }
 
 function _reset() {
@@ -62,21 +82,36 @@ function register_chrome_download_oncreated_cb() {
 
 function register_chrome_download_onchanged_cb() {
   chrome.downloads.onChanged.addListener(function(downloadDelta) {
-    console.log(downloadDelta);
-    if ('state' in downloadDelta && downloadDelta['state']['current'] == 'complete') {
-      // first see whether we should sync to Runningahead
-      
-      // then download a new activity
-      g_cur_downloading_activity_id++;
-      g_last_downloaded_id = downloadDelta['id'];
-      download_activities();
-    }
-    if ('filename' in downloadDelta && downloadDelta['filename']['current'].indexOf(g_download_dir) > -1) {
-      g_cur_downloading_activity_fullpath = downloadDelta['filename']['current'];
-      // indicating the start of the downloading...
-      // we probably can start the next downloading...
-      // g_cur_downloading_activity_id++;
-      // download_activities();
+    //console.log(downloadDelta);
+    if (g_cur_downloading_chrome_id == downloadDelta['id']) {
+      clearTimeout(g_chrome_download_timeout);
+      if ('state' in downloadDelta && downloadDelta['state']['current'] == 'complete') {
+        // first see whether we should sync to Runningahead
+        
+        // then download a new activity
+        g_cur_downloading_activity_id++;
+        g_last_downloaded_chrome_id = downloadDelta['id'];
+        download_activities();
+      }
+      if ('error' in downloadDelta && downloadDelta['filename']['current'].indexOf(g_download_dir) > -1) {
+        // append the errors
+        var cur_id = g_all_activity_ids[g_cur_downloading_activity_id];
+        g_download_errors.push({
+          'error_msg': downloadDelta['error']['current'], 
+          'activity_id': cur_id,
+          'date': g_all_activity_dict[cur_id]
+        });
+        // then continue to download
+        g_cur_downloading_activity_id++;
+        download_activities();
+      }
+      if ('filename' in downloadDelta && downloadDelta['filename']['current'].indexOf(g_download_dir) > -1) {
+        g_cur_downloading_activity_fullpath = downloadDelta['filename']['current'];
+        // indicating the start of the downloading...
+        // we probably can start the next downloading...
+        // g_cur_downloading_activity_id++;
+        // download_activities();
+      }
     }
   });
 }
@@ -98,14 +133,27 @@ function get_activity_tcx(_activity_id, date) {
     //filename: 'nfndz_garmin_logs/'+output_fn+'.tcx',
     filename: g_download_dir+'/'+g_cur_downloading_activity_fn,
     conflictAction: 'overwrite'
+  }, function cb(downloadId) {
+    g_cur_downloading_chrome_id = downloadId;
   });
+  g_chrome_download_timeout = setTimeout(function(){ 
+    chrome.downloads.cancel(g_cur_downloading_chrome_id);
+    var cur_id = g_all_activity_ids[g_cur_downloading_activity_id];
+    g_download_errors.push({
+      'error_msg': 'Download Timeout', 
+      'activity_id': cur_id,
+      'date': g_all_activity_dict[cur_id]
+    });
+    g_cur_downloading_activity_id++;
+    download_activities();
+  }, 10*1000);
 }
 
 function download_activities() {
   if (g_cur_downloading_activity_id < g_all_activity_ids.length) {
     update_indicating_text(
       'Downloading Activity '
-      +g_cur_downloading_activity_fn
+      +g_all_activity_ids[g_cur_downloading_activity_id]
       +' ('+(g_cur_downloading_activity_id+1)+'/'+g_all_activity_ids.length+')');
     update_download_bar( 
       ((g_cur_downloading_activity_id+1)*100.0/g_all_activity_ids.length).toFixed(0)
@@ -113,9 +161,39 @@ function download_activities() {
     var cur_id = g_all_activity_ids[g_cur_downloading_activity_id];
     get_activity_tcx(cur_id, g_all_activity_dict[cur_id]);
   } else {
-    update_milestone_text('<strong>ALL Works DONE!</strong>', 1);
+    update_milestone_text('ALL Downloads Completed! There are <strong>'+g_all_activity_ids.length+'</strong> activities in total', 1);
+    update_final_msg_text('<strong>'+(g_all_activity_ids.length - g_download_errors.length)+'</strong> were successed', 
+      '<strong>'+g_download_errors.length+'</strong> were failed');
+    fill_error_table(g_download_errors);
     $('#show_downloaded_files_btn').show();
     _reset();
+  }
+}
+
+function fill_error_table(data) {
+  if (data.length == 0) {
+    $("#error-table").hide();
+  } else {
+    $.each(data, function(i, obj) {
+      var replacements = {
+        "%ID%":obj.activity_id,
+        "%DATE%":obj.date,
+        "%MSG%":obj.error_msg
+      },
+      table_row = 
+      '<tr> \
+        <td>%ID%</td> \
+        <td>%DATE%</td> \
+        <td>%MSG%</td> \
+      </tr>';
+
+      table_row = table_row.replace(/%\w+%/g, function(all) {
+         return replacements[all] || "NULL";
+      });
+      //console.log(table_row);
+      $('table#error-table').append(table_row);
+    });
+    $("#error-table").show();
   }
 }
 
@@ -131,6 +209,7 @@ function store_activity_ids(all_activities_in_month, mode, date1, date2) {
     if (g_all_activity_ids.indexOf(obj.id) == -1 
       && moment(obj.date).isSameOrAfter(g_start_date) 
       && moment(obj.date).isSameOrBefore(g_end_date) 
+      && !('trainingPlanId' in obj && obj['trainingPlanId'] != null)
     ) {
       var append = false;
       if (mode == 0) {
@@ -224,6 +303,11 @@ function register_action_btn() {
     disable_form();
     $("#pbar0").show();
     $('#total_activities_show').hide();
+    $('#final_msg').hide();
+    _reset_chrom_download_status();
+    $("#error-table > tbody").empty();
+    $("#error-table").hide();
+
     get_all_garmin_activities_id(start_date, end_date);
   });
 }
@@ -317,7 +401,7 @@ function register_datepicker_events() {
 
 function register_show_download_folder_btn() {
   $('#show_downloaded_files_btn').on('click', function() {
-    chrome.downloads.show(g_last_downloaded_id);
+    chrome.downloads.show(g_last_downloaded_chrome_id);
   });
 }
 
