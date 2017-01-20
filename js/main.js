@@ -118,7 +118,8 @@ function register_chrome_download_onchanged_cb() {
 
 function get_activity_tcx(_activity_id, date) {
   //var garmin_activity_tcx_url = 'https://connect.garmin.com/modern/proxy/activity-service-1.1/tcx/activity/activity_id?full=true';
-  var garmin_activity_tcx_url = 'https://connect.garmin.com/modern/proxy/activity-service/activity/activity_id/details?maxChartSize=1000&maxPolylineSize=1000';
+  //var garmin_activity_tcx_url = 'https://connect.garmin.com/modern/proxy/activity-service/activity/activity_id/details?maxChartSize=1000&maxPolylineSize=1000';
+  var garmin_activity_tcx_url = 'https://connect.garmin.com/modern/proxy/download-service/export/tcx/activity/activity_id';
   g_cur_downloading_activity_fn = 'activity_'+_activity_id+'.tcx';
   if ($('input[type=radio][name=logsfileopt]:checked').val() == 'option1') {
     if (moment(date).isSame(g_downloading_cur_date)) {
